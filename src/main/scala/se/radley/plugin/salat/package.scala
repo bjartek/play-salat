@@ -34,4 +34,24 @@ package object salat {
   def mongoCollection(collectionName: String, sourceName:String = "default")(implicit app: Application): MongoCollection = {
     app.plugin[SalatPlugin].map(_.collection(collectionName, sourceName)).getOrElse(throw PlayException("SalatPlugin is not registered.", "You need to register the plugin with \"500:se.radley.plugin.salat.SalatPlugin\" in conf/play.plugins"))
   }
+
+  import play.api.data.format._
+  import play.api.data.format.Formats._
+  /**
+   * Formatter to be able to bind ObjectId's in form mappings. 
+   * example 
+   *  val form = Form(mapping(
+   *    "field" -> of[ObjectId]
+   *  ))
+   **/
+  implicit val objectIdFormat = new Formatter[ObjectId] {
+   def bind(key: String, data: Map[String, String]) = {
+     stringFormat.bind(key, data).right.flatMap { value =>
+           scala.util.control.Exception.allCatch[ObjectId]
+            .either(new ObjectId(value))
+           .left.map(e => Seq(FormError(key, "error.objectId", Nil))) }
+   }
+
+   def unbind(key: String, value: ObjectId) = Map(key -> value.toString)
+  }
 }
